@@ -158,17 +158,20 @@ export default function (Vue) {
     * @param  {object} vue directive binding
     * @return
     */
-    update (el, binding) {
+    update (el, binding, vnode) {
       let { src, loading, error } = this._valueFormatter(binding.value)
       src = getBestSelectionFromSrcset(el, this.options.scale) || src
 
       const exist = find(this.ListenerQueue, item => item.el === el)
-
-      exist && exist.update({
-        src,
-        loading,
-        error
-      })
+      if (!exist) {
+        this.add(el, binding, vnode)
+      } else {
+        exist.update({
+          src,
+          loading,
+          error
+        })
+      }
       if (this._observer) {
         this._observer.unobserve(el)
         this._observer.observe(el)
@@ -299,6 +302,7 @@ export default function (Vue) {
       }
 
       this.$on = (event, func) => {
+        if (!this.Event.listeners[event]) this.Event.listeners[event] = []
         this.Event.listeners[event].push(func)
       }
 
@@ -313,13 +317,15 @@ export default function (Vue) {
 
       this.$off = (event, func) => {
         if (!func) {
-          this.Event.listeners[event] = []
+          if (!this.Event.listeners[event]) return
+          this.Event.listeners[event].length = 0
           return
         }
         remove(this.Event.listeners[event], func)
       }
 
       this.$emit = (event, context, inCache) => {
+        if (!this.Event.listeners[event]) return
         this.Event.listeners[event].forEach(func => func(context, inCache))
       }
     }
@@ -329,17 +335,16 @@ export default function (Vue) {
      * @return
      */
     _lazyLoadHandler () {
-      let catIn = false
+      const freeList = []
       this.ListenerQueue.forEach((listener, index) => {
-        if (listener.state.loaded) return
-        catIn = listener.checkInView()
+        if (!listener.state.error && listener.state.loaded) {
+          return freeList.push(listener)
+        }
+        const catIn = listener.checkInView()
         if (!catIn) return
-        listener.load(() => {
-          if (!listener.state.error && listener.state.loaded) {
-            this.ListenerQueue.splice(index, 1)
-          }
-        })
+        listener.load()
       })
+      freeList.forEach(vm => remove(this.ListenerQueue, vm))
     }
     /**
     * init IntersectionObserver

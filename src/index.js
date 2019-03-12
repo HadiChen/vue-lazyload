@@ -1,6 +1,7 @@
 import Lazy from './lazy'
 import LazyComponent from './lazy-component'
 import LazyContainer from './lazy-container'
+import LazyImage from './lazy-image'
 import { assign } from './util'
 
 export default {
@@ -22,6 +23,10 @@ export default {
       Vue.component('lazy-component', LazyComponent(lazy))
     }
 
+    if (options.lazyImage) {
+      Vue.component('lazy-image', LazyImage(lazy))
+    }
+
     if (isVue2) {
       Vue.directive('lazy', {
         bind: lazy.add.bind(lazy),
@@ -31,7 +36,7 @@ export default {
       })
       Vue.directive('lazy-container', {
         bind: lazyContainer.bind.bind(lazyContainer),
-        update: lazyContainer.update.bind(lazyContainer),
+        componentUpdated: lazyContainer.update.bind(lazyContainer),
         unbind: lazyContainer.unbind.bind(lazyContainer)
       })
     } else {
